@@ -23,102 +23,73 @@ Ensure you have the following dependencies in your `build.gradle` files.
    - **DAO (Data Access Object)**: Interface with methods to query and interact with the database.
 
 #### Example - Entity
-Here, we’ll create a simple `Note` entity.
+Here, we’ll create a simple `User` entity.
 
    ```kotlin
-   @Entity(tableName = "notes_tbl")
-data class Note(
-    @PrimaryKey
-    val id: UUID = UUID.randomUUID(),
-
-    @ColumnInfo(name = "note_title")
-    val title: String,
-
-    @ColumnInfo(name = "note_description")
-    val description: String,
-
-    @ColumnInfo(name = "note_entry_date")
-    val entryDate: Date = Date.from(Instant.now())
-)
+   @Entity(tableName = "users")
+   data class User(
+       @PrimaryKey(autoGenerate = true) val id: Int = 0,
+       val name: String,
+       val age: Int
+   )
    ```
 
 #### Example - DAO
-The DAO will define the SQL queries and actions for interacting with the `Note` entity.
+The DAO will define the SQL queries and actions for interacting with the `User` entity.
 
    ```kotlin
    @Dao
-interface NoteDatabaseDao {
+   interface UserDao {
+       @Insert(onConflict = OnConflictStrategy.REPLACE)
+       suspend fun insertUser(user: User)
 
-    @Query("SELECT * from notes_tbl")
-    fun getNotes(): Flow <List<Note>>
-
-    @Query("SELECT * from notes_tbl where id=:id")
-    suspend fun getNoteById(id:String):Note
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(note:Note)
-
-    @Update(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun update(note:Note)
-
-    @Query("DELETE from notes_tbl")
-    suspend fun deleteAll()
-
-    @Delete
-    suspend fun deleteNote(note:Note)
-
-}
+       @Query("SELECT * FROM users")
+       fun getAllUsers(): Flow<List<User>>
+   }
    ```
 
 ### 4. **Database Class**:
 Define a Room database class with the `@Database` annotation. Add your DAOs here.
 
    ```kotlin
-  @Database(entities = [Note::class], version = 1, exportSchema = false)
-@TypeConverters(DateConverter::class,UUIDConverter::class)
-abstract class NoteDatabase : RoomDatabase() {
-    abstract fun noteDao(): NoteDatabaseDao
-}
+   @Database(entities = [User::class], version = 1, exportSchema = false)
+   abstract class AppDatabase : RoomDatabase() {
+       abstract fun userDao(): UserDao
+   }
    ```
 
 ### 5. **Hilt Module for Dependency Injection**:
-Use Hilt to provide a singleton instance of `NoteDatabase` and `NoteDatabaseDao`.
+Use Hilt to provide a singleton instance of `AppDatabase` and `UserDao`.
 
    ```kotlin
-  @InstallIn(SingletonComponent::class)
-@Module
-object AppModule {
+   @Module
+   @InstallIn(SingletonComponent::class)
+   object DatabaseModule {
+       @Provides
+       @Singleton
+       fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
+           return Room.databaseBuilder(
+               context,
+               AppDatabase::class.java,
+               "app_database"
+           ).build()
+       }
 
-    @Singleton
-    @Provides
-    fun provideNotesDao(noteDatabase: NoteDatabase): NoteDatabaseDao = noteDatabase.noteDao()
-
-    @Singleton
-    @Provides
-    fun provideAppDatabase(@ApplicationContext context: Context): NoteDatabase =
-        Room.databaseBuilder(
-            context,
-            NoteDatabase::class.java,
-            "notes_db"
-        ).fallbackToDestructiveMigration()
-            .build()
-}
+       @Provides
+       fun provideUserDao(database: AppDatabase): UserDao {
+           return database.userDao()
+       }
+   }
    ```
 
 ### 6. **Repository**:
 It’s a good practice to add a repository layer to separate data sources from the rest of the app logic.
 
    ```kotlin
-   class NoteRepository @Inject constructor(private val noteDatabaseDao: NoteDatabaseDao) {
-    suspend fun addNote(note: Note) = noteDatabaseDao.insert(note)
-    suspend fun updateNote(note: Note) = noteDatabaseDao.update(note)
-    suspend fun deleteNote(note: Note) = noteDatabaseDao.deleteNote(note)
-    suspend fun deleteAllNotes() = noteDatabaseDao.deleteAll()
-    fun getAllNotes(): Flow<List<Note>> = noteDatabaseDao.getNotes()
-        .flowOn(Dispatchers.IO).conflate()
-
-
-}
+   class UserRepository @Inject constructor(private val userDao: UserDao) {
+       fun getAllUsers() = userDao.getAllUsers()
+       suspend fun insertUser(user: User) = userDao.insertUser(user)
+   }
    ```
 
 ### 7. **ViewModel**:
