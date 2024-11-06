@@ -7,16 +7,36 @@ Setting up a local database in Jetpack Compose using Room, Hilt, and Jetpack lib
 
 ### 2. **Project Setup**:
 Ensure you have the following dependencies in your `build.gradle` files.
+First, add the `hilt-android-gradle-plugin` plugin to your project's root `build.gradle` file:
 
    ```kotlin
-   // Room dependencies
-   implementation "androidx.room:room-runtime:2.4.1"
-   kapt "androidx.room:room-compiler:2.4.1"
-
-   // Hilt dependencies
-   implementation "com.google.dagger:hilt-android:2.40.5"
-   kapt "com.google.dagger:hilt-compiler:2.40.5"
+   plugins {
+  ...
+  id("com.google.dagger.hilt.android") version "2.51.1" apply false
+}
    ```
+Then, apply the Gradle plugin and add these dependencies in your `app/build.gradle` file:
+
+```kotlin
+plugins {
+  id("kotlin-kapt")
+  id("com.google.dagger.hilt.android")
+}
+
+android {
+  ...
+}
+
+dependencies {
+  implementation("com.google.dagger:hilt-android:2.51.1")
+  kapt("com.google.dagger:hilt-android-compiler:2.51.1")
+}
+
+// Allow references to generated code
+kapt {
+  correctErrorTypes = true
+}
+```
 
 ### 3. **Define Entity and DAO**:
    - **Entity**: Represents a table in your Room database.
