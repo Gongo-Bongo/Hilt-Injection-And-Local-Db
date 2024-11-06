@@ -43,7 +43,7 @@ data class Note(
    ```
 
 #### Example - DAO
-The DAO will define the SQL queries and actions for interacting with the `User` entity.
+The DAO will define the SQL queries and actions for interacting with the `Note` entity.
 
    ```kotlin
    @Dao
