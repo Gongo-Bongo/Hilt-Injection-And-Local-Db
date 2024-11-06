@@ -26,12 +26,20 @@ Ensure you have the following dependencies in your `build.gradle` files.
 Here, we’ll create a simple `User` entity.
 
    ```kotlin
-   @Entity(tableName = "users")
-   data class User(
-       @PrimaryKey(autoGenerate = true) val id: Int = 0,
-       val name: String,
-       val age: Int
-   )
+   @Entity(tableName = "notes_tbl")
+data class Note(
+    @PrimaryKey
+    val id: UUID = UUID.randomUUID(),
+
+    @ColumnInfo(name = "note_title")
+    val title: String,
+
+    @ColumnInfo(name = "note_description")
+    val description: String,
+
+    @ColumnInfo(name = "note_entry_date")
+    val entryDate: Date = Date.from(Instant.now())
+)
    ```
 
 #### Example - DAO
