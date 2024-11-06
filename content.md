@@ -82,7 +82,7 @@ abstract class NoteDatabase : RoomDatabase() {
    ```
 
 ### 5. **Hilt Module for Dependency Injection**:
-Use Hilt to provide a singleton instance of `AppDatabase` and `UserDao`.
+Use Hilt to provide a singleton instance of `NoteDatabase` and `NoteDatabaseDao`.
 
    ```kotlin
    @Module
