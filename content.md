@@ -74,10 +74,11 @@ interface NoteDatabaseDao {
 Define a Room database class with the `@Database` annotation. Add your DAOs here.
 
    ```kotlin
-   @Database(entities = [User::class], version = 1, exportSchema = false)
-   abstract class AppDatabase : RoomDatabase() {
-       abstract fun userDao(): UserDao
-   }
+  @Database(entities = [Note::class], version = 1, exportSchema = false)
+@TypeConverters(DateConverter::class,UUIDConverter::class)
+abstract class NoteDatabase : RoomDatabase() {
+    abstract fun noteDao(): NoteDatabaseDao
+}
    ```
 
 ### 5. **Hilt Module for Dependency Injection**:
