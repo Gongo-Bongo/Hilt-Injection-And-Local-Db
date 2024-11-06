@@ -109,10 +109,16 @@ object AppModule {
 It’s a good practice to add a repository layer to separate data sources from the rest of the app logic.
 
    ```kotlin
-   class UserRepository @Inject constructor(private val userDao: UserDao) {
-       fun getAllUsers() = userDao.getAllUsers()
-       suspend fun insertUser(user: User) = userDao.insertUser(user)
-   }
+   class NoteRepository @Inject constructor(private val noteDatabaseDao: NoteDatabaseDao) {
+    suspend fun addNote(note: Note) = noteDatabaseDao.insert(note)
+    suspend fun updateNote(note: Note) = noteDatabaseDao.update(note)
+    suspend fun deleteNote(note: Note) = noteDatabaseDao.deleteNote(note)
+    suspend fun deleteAllNotes() = noteDatabaseDao.deleteAll()
+    fun getAllNotes(): Flow<List<Note>> = noteDatabaseDao.getNotes()
+        .flowOn(Dispatchers.IO).conflate()
+
+
+}
    ```
 
 ### 7. **ViewModel**:
