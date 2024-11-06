@@ -85,24 +85,24 @@ abstract class NoteDatabase : RoomDatabase() {
 Use Hilt to provide a singleton instance of `NoteDatabase` and `NoteDatabaseDao`.
 
    ```kotlin
-   @Module
-   @InstallIn(SingletonComponent::class)
-   object DatabaseModule {
-       @Provides
-       @Singleton
-       fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
-           return Room.databaseBuilder(
-               context,
-               AppDatabase::class.java,
-               "app_database"
-           ).build()
-       }
+  @InstallIn(SingletonComponent::class)
+@Module
+object AppModule {
 
-       @Provides
-       fun provideUserDao(database: AppDatabase): UserDao {
-           return database.userDao()
-       }
-   }
+    @Singleton
+    @Provides
+    fun provideNotesDao(noteDatabase: NoteDatabase): NoteDatabaseDao = noteDatabase.noteDao()
+
+    @Singleton
+    @Provides
+    fun provideAppDatabase(@ApplicationContext context: Context): NoteDatabase =
+        Room.databaseBuilder(
+            context,
+            NoteDatabase::class.java,
+            "notes_db"
+        ).fallbackToDestructiveMigration()
+            .build()
+}
    ```
 
 ### 6. **Repository**:
