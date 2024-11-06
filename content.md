@@ -23,7 +23,7 @@ Ensure you have the following dependencies in your `build.gradle` files.
    - **DAO (Data Access Object)**: Interface with methods to query and interact with the database.
 
 #### Example - Entity
-Here, we’ll create a simple `User` entity.
+Here, we’ll create a simple `Note` entity.
 
    ```kotlin
    @Entity(tableName = "notes_tbl")
