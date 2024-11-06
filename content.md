@@ -176,6 +176,189 @@ In your `MainActivity`, set up Hilt and call your `UserScreen`.
    }
    ```
 
+
+
+If you have multiple tables, you can extend the setup by adding more entities, DAOs, and repositories. Here’s how you can modify the code to work with multiple tables.
+
+### 1. **Define Additional Entities**
+Let’s say you want to add a `Post` table alongside the existing `User` table.
+
+#### User Entity (existing)
+   ```kotlin
+   @Entity(tableName = "users")
+   data class User(
+       @PrimaryKey(autoGenerate = true) val id: Int = 0,
+       val name: String,
+       val age: Int
+   )
+   ```
+
+#### Post Entity (new)
+   ```kotlin
+   @Entity(tableName = "posts")
+   data class Post(
+       @PrimaryKey(autoGenerate = true) val postId: Int = 0,
+       val userId: Int, // foreign key to User
+       val title: String,
+       val content: String
+   )
+   ```
+
+### 2. **Create Additional DAOs**
+Each table should have its own DAO interface. For instance, a `PostDao` for the `Post` entity.
+
+#### UserDao (existing)
+   ```kotlin
+   @Dao
+   interface UserDao {
+       @Insert(onConflict = OnConflictStrategy.REPLACE)
+       suspend fun insertUser(user: User)
+
+       @Query("SELECT * FROM users")
+       fun getAllUsers(): Flow<List<User>>
+   }
+   ```
+
+#### PostDao (new)
+   ```kotlin
+   @Dao
+   interface PostDao {
+       @Insert(onConflict = OnConflictStrategy.REPLACE)
+       suspend fun insertPost(post: Post)
+
+       @Query("SELECT * FROM posts WHERE userId = :userId")
+       fun getPostsForUser(userId: Int): Flow<List<Post>>
+   }
+   ```
+
+### 3. **Update Database Class**
+Your `AppDatabase` should now include both DAOs. Also, list both `User` and `Post` entities in the `@Database` annotation.
+
+   ```kotlin
+   @Database(entities = [User::class, Post::class], version = 1, exportSchema = false)
+   abstract class AppDatabase : RoomDatabase() {
+       abstract fun userDao(): UserDao
+       abstract fun postDao(): PostDao
+   }
+   ```
+
+### 4. **Modify Hilt Module for Dependency Injection**
+In the Hilt module, provide both DAOs for dependency injection.
+
+   ```kotlin
+   @Module
+   @InstallIn(SingletonComponent::class)
+   object DatabaseModule {
+       @Provides
+       @Singleton
+       fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
+           return Room.databaseBuilder(
+               context,
+               AppDatabase::class.java,
+               "app_database"
+           ).build()
+       }
+
+       @Provides
+       fun provideUserDao(database: AppDatabase): UserDao {
+           return database.userDao()
+       }
+
+       @Provides
+       fun providePostDao(database: AppDatabase): PostDao {
+           return database.postDao()
+       }
+   }
+   ```
+
+### 5. **Create Additional Repositories**
+Each DAO typically has a corresponding repository to manage the data operations separately.
+
+#### UserRepository (existing)
+   ```kotlin
+   class UserRepository @Inject constructor(private val userDao: UserDao) {
+       fun getAllUsers() = userDao.getAllUsers()
+       suspend fun insertUser(user: User) = userDao.insertUser(user)
+   }
+   ```
+
+#### PostRepository (new)
+   ```kotlin
+   class PostRepository @Inject constructor(private val postDao: PostDao) {
+       fun getPostsForUser(userId: Int) = postDao.getPostsForUser(userId)
+       suspend fun insertPost(post: Post) = postDao.insertPost(post)
+   }
+   ```
+
+### 6. **Update ViewModel to Include Multiple Repositories**
+If you want to interact with both users and posts in a single ViewModel, inject both `UserRepository` and `PostRepository`.
+
+   ```kotlin
+   @HiltViewModel
+   class MainViewModel @Inject constructor(
+       private val userRepository: UserRepository,
+       private val postRepository: PostRepository
+   ) : ViewModel() {
+
+       val allUsers = userRepository.getAllUsers().asLiveData()
+       val postsForUser = MutableLiveData<List<Post>>()
+
+       fun loadPostsForUser(userId: Int) {
+           viewModelScope.launch {
+               postRepository.getPostsForUser(userId).collect { posts ->
+                   postsForUser.value = posts
+               }
+           }
+       }
+
+       fun addUser(user: User) {
+           viewModelScope.launch {
+               userRepository.insertUser(user)
+           }
+       }
+
+       fun addPost(post: Post) {
+           viewModelScope.launch {
+               postRepository.insertPost(post)
+           }
+       }
+   }
+   ```
+
+### 7. **Compose UI**
+You can then create UI elements to display both users and their posts, updating as data is added or removed.
+
+   ```kotlin
+   @Composable
+   fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
+       val users by viewModel.allUsers.observeAsState(emptyList())
+       val posts by viewModel.postsForUser.observeAsState(emptyList())
+
+       // UI to display users and their posts
+       Column {
+           LazyColumn {
+               items(users) { user ->
+                   Text(text = "${user.name}, ${user.age}")
+                   Button(onClick = { viewModel.loadPostsForUser(user.id) }) {
+                       Text("Load Posts")
+                   }
+               }
+           }
+
+           Spacer(modifier = Modifier.height(16.dp))
+
+           Text("Posts:")
+           LazyColumn {
+               items(posts) { post ->
+                   Text(text = "${post.title}: ${post.content}")
+               }
+           }
+       }
+   }
+   ```
+
+This setup allows you to manage multiple tables, each with its own DAO and repository, while using Hilt for dependency injection. The UI can then observe data from both tables, allowing you to display related data (e.g., users and their posts) in Jetpack Compose.
+
 ### Summary
 - **Room** manages the database with tables and queries.
 - **Hilt** injects dependencies, making the setup modular and testable.
